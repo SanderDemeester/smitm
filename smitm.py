@@ -10,8 +10,6 @@ import SimpleHTTPServer
 import cgi
 import signal
 
-
-
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal_handler.signal_handler)
     generate_filestructure()

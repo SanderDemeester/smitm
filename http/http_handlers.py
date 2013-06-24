@@ -12,7 +12,6 @@ class TCPRequestClient(asyncore.dispatcher):
     # traffic from proxy to remote server (proxy<->server)
 
     def __init__(self,connection,addr,header_list,handler):
-        print "init tcp streaming"
         asyncore.dispatcher.__init__(self)
         self.header_dict = {}
         for list in header_list:
