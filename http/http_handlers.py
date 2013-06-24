@@ -7,17 +7,24 @@ import cgi
 
 class TCPRequestClient(asyncore.dispatcher):
     """HTTP Tunneling behind a web proxy"""
+    # we will use the asyncore dispatcher for handeling
+    # traffic from proxy to remote server (proxy<->server)
+
     def __init__(self,connection,addr,header_list,handler):
-        asyncore.dispatcher.__init__(self)
         print "init tcp streaming"
-        header_dict = {}
+        asyncore.dispatcher.__init__(self)
+        self.header_dict = {}
         for list in header_list:
             if(len(list)==2):
-                header_dict.update(dict(zip(list[0::2],list[1::2])))
+                self.header_dict.update(dict(zip(list[0::2],list[1::2])))
             else:
                 list = [list[0],' '.join(list[1:])]
-                header_dict.update(dict(zip(list[0::2],list[1::2])))
-        print header_dict
+                self.header_dict.update(dict(zip(list[0::2],list[1::2])))
+        print self.header_dict
+        self.local_socket = connection # socket browser<->proxy
+        self.local_addres = addr # addres from browser<->proxy
+        self.original_handler = handler # the original handler
+
     
     def handle_connect(self):
         pass
@@ -38,7 +45,7 @@ class TCPRequestClient(asyncore.dispatcher):
         sent = self.send(self.out_buffer)
         self.out_buffer = self.out_buffer[sent:]
 
-    def feef(self,data):
+    def feed(self,data):
         self.out_buffer += data
 
     def writable(self):
@@ -110,15 +117,22 @@ class HTTPhandler(asynchat.async_chat,SimpleHTTPServer.SimpleHTTPRequestHandler)
         self.set_terminator('\r\n\r\n')
         self.found_terminator = self.handle_request_line
         self.request_version = "HTTP/1.1"
-        self.init = 0
+        self.init = 0 # flag to see if our request handler is already init
+        self.tcp_streaming_flag = 0 # flag to see if our HTTPhandler is in tcp streaming mode
         
     def collect_incoming_data(self,data):
         self.data += data
+        if(self.tcp_straeming_flag == 1):
+            self.http_request_handler.feed(self.data)
+            self.data = "" # clear out our buffers
+    
+    def collect_incoming_data_tcp_mode(self):
+        self.collect_incoming_data(self,self.data)
+            
     
     def handle_request_line(self):
         header_array = self.data.split("\r\n")
         header_list = [i.split() for i in header_array]
-        tcp_streaming_flag = 0
         for header in header_list:
             if(header[0] == 'Host:'):
                 host = header[1]
@@ -128,15 +142,20 @@ class HTTPhandler(asynchat.async_chat,SimpleHTTPServer.SimpleHTTPRequestHandler)
                 tcp_streaming_flag = 1
 
         #print "request for: " + host
-        #print self.data
+        print self.data
         if(self.init == 0):
             try:
-                if(tcp_streaming_flag == 1):
+                if(self.tcp_streaming_flag == 1):
                     #self.connection contains the socket: client->proxy
                     #self.addr contains the addres bound to the socket
                     #header_list contains a list for the HTTP headers
                     self.http_request_handler = TCPRequestClient(self.connection,self.client_addr,
                                                                  header_list,self)
+                    # when we are in tcp streaming mode we will ignore any terminator
+                    # and forward all tcp traffic ourself.
+                    # the terminator methode should no longer be used because all our traffic
+                    # will now be opic TCP traffic (mostly TLS/SSL)
+                    self.found_terminator = self.collect_incoming_data_tcp_mode
                 else:
                     #host contains the value from the http host header
                     #self.data contains the original http request
