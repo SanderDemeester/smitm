@@ -7,9 +7,17 @@ import cgi
 
 class TCPRequestClient(asyncore.dispatcher):
     """HTTP Tunneling behind a web proxy"""
-    def __init__(self,host,request,HTTPhandler):
+    def __init__(self,connection,addr,header_list,handler):
         asyncore.dispatcher.__init__(self)
-        print host
+        print "init tcp streaming"
+        header_dict = {}
+        for list in header_list:
+            if(len(list)==2):
+                header_dict.update(dict(zip(list[0::2],list[1::2])))
+            else:
+                list = [list[0],' '.join(list[1:])]
+                header_dict.update(dict(zip(list[0::2],list[1::2])))
+        print header_dict
     
     def handle_connect(self):
         pass
@@ -43,7 +51,7 @@ class HTTPRequestClient(asyncore.dispatcher,SimpleHTTPServer.SimpleHTTPRequestHa
 
     def __init__(self,host,request,HTTPhandler):
         asyncore.dispatcher.__init__(self)
-        print "INIT-HTTPRequesetClient"
+        #print "INIT-HTTPRequesetClient"
         if(len(host.split(":")) == 2):
             (self.hostname,self.port) = host.split(":")
         else:
@@ -65,12 +73,12 @@ class HTTPRequestClient(asyncore.dispatcher,SimpleHTTPServer.SimpleHTTPRequestHa
         print "some error"
 
     def handle_close(self):
-        print "closing HTTPRequestHandler"
+        #print "closing HTTPRequestHandler"
         self.close()
     
     def handle_read(self):
         buffer = self.recv(10000)
-#        print buffer        
+        #print buffer        
         self.http_handler.push(buffer)
         buffer = ""
 
@@ -94,7 +102,7 @@ class HTTPhandler(asynchat.async_chat,SimpleHTTPServer.SimpleHTTPRequestHandler)
     # we do not use push_with_procucer because we do not know when the producer will be ready.
     def __init__(self,connection,addr,server):
         asynchat.async_chat.__init__(self,connection)
-        print "INIT-HTTPhandler"
+        #print "INIT-HTTPhandler"
         self.client_addr = addr
         self.connection = connection
         self.server = server
@@ -119,21 +127,27 @@ class HTTPhandler(asynchat.async_chat,SimpleHTTPServer.SimpleHTTPRequestHandler)
             elif(header[0] == "CONNECT"):
                 tcp_streaming_flag = 1
 
-        print "request for: " + host
-#        print self.data
+        #print "request for: " + host
+        #print self.data
         if(self.init == 0):
             try:
                 if(tcp_streaming_flag == 1):
-                    self.http_request_handler = TCPRequestClient(host,self.data,self)
+                    #self.connection contains the socket: client->proxy
+                    #self.addr contains the addres bound to the socket
+                    #header_list contains a list for the HTTP headers
+                    self.http_request_handler = TCPRequestClient(self.connection,self.client_addr,
+                                                                 header_list,self)
                 else:
+                    #host contains the value from the http host header
+                    #self.data contains the original http request
                     self.http_request_handler = HTTPRequestClient(host,self.data,self)
                 self.init = 1
                 self.http_request_handler.init = 1
             except asyncore.ExitNow:
-                print "FOUT!!!"
+                #print "FOUT!!!"
                 self.push("smitm error")
         else:
-            print self.http_request_handler
+            #print self.http_request_handler
             self.http_request_handler.feed(self.data)
 
 class HTTPServer(asyncore.dispatcher):
