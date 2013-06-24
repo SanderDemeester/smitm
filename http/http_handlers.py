@@ -24,7 +24,8 @@ class TCPRequestClient(asyncore.dispatcher):
         self.local_socket = connection # socket browser<->proxy
         self.local_addres = addr # addres from browser<->proxy
         self.original_handler = handler # the original handler
-
+        
+        #TODO connect to remote server and forward all TCP traffic
     
     def handle_connect(self):
         pass
