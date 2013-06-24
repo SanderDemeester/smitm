@@ -20,26 +20,29 @@ class TCPRequestClient(asyncore.dispatcher):
             else:
                 list = [list[0],' '.join(list[1:])]
                 self.header_dict.update(dict(zip(list[0::2],list[1::2])))
-        print self.header_dict
         self.local_socket = connection # socket browser<->proxy
         self.local_addres = addr # addres from browser<->proxy
         self.original_handler = handler # the original handler
         
-        #TODO connect to remote server and forward all TCP traffic
+        (self.hostname,self.port) = self.header_dict['CONNECT'].split(' ')[0].split(':')
+
+        self.http_type = self.header_dict['CONNECT'].split(' ')[1]
+        self.create_socket(socket.AF_INET,socket.SOCK_STREAM)
+        self.connect((self.hostname,int(self.port)))
+
+        # Implement RFC 2817 section 5.3
+        self.original_handler.push(self.http_type + " 200 OK\r\n\r\n")
+        self.out_buffer = ""
     
     def handle_connect(self):
         pass
 
-    def handle_error(self):
-        print "some error from TCPRequestClient"
-        
     def handle_close(self):
-        print "closing TCPRequestClient"
         self.close()
     
     def handle_read(self):
         buffer = self.recv(10000)
-        self.http_handler.push(buffer)
+        self.original_handler.push(buffer)
         buffer = ""
     
     def handle_write(self):
@@ -157,6 +160,7 @@ class HTTPhandler(asynchat.async_chat,SimpleHTTPServer.SimpleHTTPRequestHandler)
                     # the terminator methode should no longer be used because all our traffic
                     # will now be opic TCP traffic (mostly TLS/SSL)
                     self.found_terminator = self.collect_incoming_data_tcp_mode
+                    self.data = ""
                 else:
                     #host contains the value from the http host header
                     #self.data contains the original http request
