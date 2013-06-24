@@ -176,6 +176,8 @@ class HTTPhandler(asynchat.async_chat,SimpleHTTPServer.SimpleHTTPRequestHandler)
         else:
             #print self.http_request_handler
             self.http_request_handler.feed(self.data)
+            #clear out data buffer
+            self.data = ""
 
 class HTTPServer(asyncore.dispatcher):
     def __init__(self,port,handler):        
