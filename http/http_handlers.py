@@ -110,17 +110,23 @@ class HTTPhandler(asynchat.async_chat,SimpleHTTPServer.SimpleHTTPRequestHandler)
     def handle_request_line(self):
         header_array = self.data.split("\r\n")
         header_list = [i.split() for i in header_array]
+        tcp_streaming_flag = 0
         for header in header_list:
             if(header[0] == 'Host:'):
                 host = header[1]
             elif(header[0] == "GET"):
                 print "GET: " + header[1]
+            elif(header[0] == "CONNECT"):
+                tcp_streaming_flag = 1
 
         print "request for: " + host
 #        print self.data
         if(self.init == 0):
             try:
-                self.http_request_handler = HTTPRequestClient(host,self.data,self)
+                if(tcp_streaming_flag == 1):
+                    self.http_request_handler = TCPRequestClient(host,self.data,self)
+                else:
+                    self.http_request_handler = HTTPRequestClient(host,self.data,self)
                 self.init = 1
                 self.http_request_handler.init = 1
             except asyncore.ExitNow:
