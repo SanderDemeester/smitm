@@ -122,7 +122,7 @@ class HTTPhandler(asynchat.async_chat,SimpleHTTPServer.SimpleHTTPRequestHandler)
         
     def collect_incoming_data(self,data):
         self.data += data
-        if(self.tcp_straeming_flag == 1):
+        if(self.tcp_streaming_flag == 1):
             self.http_request_handler.feed(self.data)
             self.data = "" # clear out our buffers
     
@@ -139,7 +139,7 @@ class HTTPhandler(asynchat.async_chat,SimpleHTTPServer.SimpleHTTPRequestHandler)
             elif(header[0] == "GET"):
                 print "GET: " + header[1]
             elif(header[0] == "CONNECT"):
-                tcp_streaming_flag = 1
+                self.tcp_streaming_flag = 1
 
         #print "request for: " + host
         print self.data
