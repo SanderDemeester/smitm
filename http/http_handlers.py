@@ -5,6 +5,39 @@ import socket
 import SimpleHTTPServer
 import cgi
 
+class TCPRequestClient(asyncore.dispatcher):
+    """HTTP Tunneling behind a web proxy"""
+    def __init__(self,host,request,HTTPhandler):
+        asyncore.dispatcher.__init__(self)
+        print host
+    
+    def handle_connect(self):
+        pass
+
+    def handle_error(self):
+        print "some error from TCPRequestClient"
+        
+    def handle_close(self):
+        print "closing TCPRequestClient"
+        self.close()
+    
+    def handle_read(self):
+        buffer = self.recv(10000)
+        self.http_handler.push(buffer)
+        buffer = ""
+    
+    def handle_write(self):
+        sent = self.send(self.out_buffer)
+        self.out_buffer = self.out_buffer[sent:]
+
+    def feef(self,data):
+        self.out_buffer += data
+
+    def writable(self):
+        return (len(self.out_buffer)>0)
+    
+        
+
 class HTTPRequestClient(asyncore.dispatcher,SimpleHTTPServer.SimpleHTTPRequestHandler):
     # This class should connect to the remote server and pass all data received from the local client
 
@@ -36,7 +69,7 @@ class HTTPRequestClient(asyncore.dispatcher,SimpleHTTPServer.SimpleHTTPRequestHa
         self.close()
     
     def handle_read(self):
-        buffer = self.recv(8192)
+        buffer = self.recv(10000)
 #        print buffer        
         self.http_handler.push(buffer)
         buffer = ""
@@ -50,7 +83,7 @@ class HTTPRequestClient(asyncore.dispatcher,SimpleHTTPServer.SimpleHTTPRequestHa
         self.send("\r\n\r\n")
 
     def feed(self,data):
-        self.out_buffer = data
+        self.out_buffer += data
     
     def writable(self):
         return (len(self.out_buffer)>0)
@@ -80,6 +113,8 @@ class HTTPhandler(asynchat.async_chat,SimpleHTTPServer.SimpleHTTPRequestHandler)
         for header in header_list:
             if(header[0] == 'Host:'):
                 host = header[1]
+            elif(header[0] == "GET"):
+                print "GET: " + header[1]
 
         print "request for: " + host
 #        print self.data
