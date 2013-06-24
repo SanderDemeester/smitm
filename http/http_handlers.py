@@ -4,6 +4,7 @@ import sys
 import socket
 import SimpleHTTPServer
 import cgi
+from tls_endpoint import *
 
 class TCPRequestClient(asyncore.dispatcher):
     """HTTP Tunneling behind a web proxy"""
@@ -29,6 +30,9 @@ class TCPRequestClient(asyncore.dispatcher):
         self.http_type = self.header_dict['CONNECT'].split(' ')[1]
         self.create_socket(socket.AF_INET,socket.SOCK_STREAM)
         self.connect((self.hostname,int(self.port)))
+
+        # Generate on the fly a certificate for this domein
+        generate_cert(self.hostname)
 
         # Implement RFC 2817 section 5.3
         self.original_handler.push(self.http_type + " 200 OK\r\n\r\n")
@@ -146,7 +150,7 @@ class HTTPhandler(asynchat.async_chat,SimpleHTTPServer.SimpleHTTPRequestHandler)
                 self.tcp_streaming_flag = 1
 
         #print "request for: " + host
-        print self.data
+        #print self.data
         if(self.init == 0):
             try:
                 if(self.tcp_streaming_flag == 1):
