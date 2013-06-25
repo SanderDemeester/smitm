@@ -31,10 +31,13 @@ class TCPRequestClient(asyncore.dispatcher):
         self.connect((self.hostname,int(self.port)))
 
         # Generate on the fly a certificate for this domein
-        generate_cert(self.hostname)
-
+        self.pem_file = generate_cert(self.hostname)
+        print self.pem_file
+        
+        tls = TLSinterceptionHandler(connection,self.pem_file,self.http_type)
+        
         # Implement RFC 2817 section 5.3
-        self.original_handler.push(self.http_type + " 200 OK\r\n\r\n")
+        #self.original_handler.push(self.http_type + " 200 OK\r\n\r\n")
         self.out_buffer = ""
     
     def handle_connect(self):
@@ -146,6 +149,7 @@ class HTTPhandler(asynchat.async_chat,SimpleHTTPServer.SimpleHTTPRequestHandler)
             elif(header[0] == "GET"):
                 print "GET: " + header[1]
             elif(header[0] == "CONNECT"):
+                print "TUNNEL-REQU: " + header[1].split(':')[0]
                 self.tcp_streaming_flag = 1
 
         #print "request for: " + host

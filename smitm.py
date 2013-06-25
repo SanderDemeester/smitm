@@ -13,5 +13,6 @@ import signal
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal_handler.signal_handler)
     generate_filestructure()
+    setup_ca()
     s = HTTPServer(9999,HTTPhandler)
     asyncore.loop()
