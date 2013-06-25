@@ -2,6 +2,8 @@ import socket
 import ssl
 import time
 import os
+import asynchat
+import BaseHTTPServer
 from random import randint
 from OpenSSL import crypto,SSL
 from M2Crypto import X509
@@ -33,20 +35,80 @@ def generate_cert(domein):
         # if there does not exist a folder in cwd. Make a new
         os.makedirs(os.getcwd()+"/certs/"+domein)
 
-    pem_file = mk_temporary_cert(os.getcwd()+"/certs/ca/cacert.crt",
+    (cert,key) = mk_temporary_cert(os.getcwd()+"/certs/ca/cacert.crt",
                                  os.getcwd()+"/certs/ca/cert.crt",domein)
     
     with open(os.getcwd()+"/certs/"+domein+"/"+domein.split(".")[1]+".pem","w") as f:
-        f.write(pem_file.as_pem())    
+        f.write(cert.as_pem())    
+        
+    with open(os.getcwd()+"/certs/"+domein+"/"+domein.split(".")[1]+".key","w") as f:
+        f.write(key.as_pem(None))
+
+    # openssl x509 -in file.pem -text
+    return (os.getcwd()+"/certs/"+domein+"/"+domein.split(".")[1]+".pem",
+            os.getcwd()+"/certs/"+domein+"/"+domein.split(".")[1]+".key")
     
+
+def ssl_wrapper(browser_socket,pem_file,key_file):
+    # create ssl context
+    ctx = SSL.Context(SSL.SSLv23_METHOD)
+    ctx.use_privatekey_file(key_file)
+    ctx.use_certificate_file(pem_file)
+    ctx.load_verify_locations(pem_file)
+
+    ssl_browser_connection = SSL.Connection(ctx,browser_socket)
+    ssl_browser_connection.set_accept_state()
+
+    return ssl_browser_connection
+            
+class HTTPServerWrapper(BaseHTTPServer.HTTPServer):
+    def __init__(self,handler,chainHandler):
+        self.RequestHandlerClass = handler
+        self.chainedHandler = chainHandler
+
+class SSLConnectionWrapper(object):
+    def __init__(self, conn, socket):
+        self._connection = conn
+        self._socket = socket
         
-    return os.getcwd()+"/certs/"+domein+"/"+domein.split(".")[1]+".pem"
-    
-class TLSinterceptionHandler:
-    def __init__(self,socket,pem_file,http_type):
-        # Browser connection is still in HTTP Tunnel-mode
-        socket.send(http_type + " 200 OK\r\n\r\n")
+	def __getattr__(self, name):
+            return self._connection.__getattribute__(name)
         
-        while True:
-            print repr(socket.recv(65535))
+	def __str__(self):
+            return object.__str__(self)
         
+	def __repr__(self):
+            return object.__repr__(self)
+        
+	def recv(self, amount):
+            return self._wrap(self._socket, self._connection.recv, 10, amount)
+        
+	def send(self, data):
+            return self._wrap(self._socket, self._connection.send, 10, data)
+        
+	def makefile(self, perm, buf):
+            return SSLConnectionWrapperFile(self, socket)
+        
+	def _wrap(self, socket, fun, attempts, *params):
+            count = 0
+            
+            while True:
+                try:
+                    result = fun(*params)
+                    
+                    break
+                except OpenSSL.SSL.WantReadError:
+                    count += 1
+                    
+                    if count == attempts:
+                        break
+                    
+                    select.select([socket], [], [], 3)
+                except OpenSSL.SSL.WantWriteError:
+                    count += 1
+                    
+                    if count == attempts:
+                        break                    
+                select.select([], [socket], [], 3)
+
+            return result

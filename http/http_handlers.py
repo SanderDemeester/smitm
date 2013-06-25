@@ -26,18 +26,24 @@ class TCPRequestClient(asyncore.dispatcher):
         
         (self.hostname,self.port) = self.header_dict['CONNECT'].split(' ')[0].split(':')
 
+        # setup passthroug
         self.http_type = self.header_dict['CONNECT'].split(' ')[1]
         self.create_socket(socket.AF_INET,socket.SOCK_STREAM)
         self.connect((self.hostname,int(self.port)))
 
+        #intercept test code
         # Generate on the fly a certificate for this domein
-        self.pem_file = generate_cert(self.hostname)
-        print self.pem_file
+        (self.pem_file,self.key_file) = generate_cert(self.hostname)
+        #print self.pem_file
+        self.local_ssl_broswer_socket = ssl_wrapper(self.local_socket,self.pem_file,
+                                                    self.key_file)
         
-        tls = TLSinterceptionHandler(connection,self.pem_file,self.http_type)
+        # self.wraped_ssl = SSLConnectionWrapper(self.local_ssl_broswer_socket,self.local_socket)
+        # https_server = HTTPServerWrapper(None,None)
+        # https_server.process_request(self.wraped_ssl,addr)
         
         # Implement RFC 2817 section 5.3
-        #self.original_handler.push(self.http_type + " 200 OK\r\n\r\n")
+        self.original_handler.push(self.http_type + " 200 OK\r\n\r\n")
         self.out_buffer = ""
     
     def handle_connect(self):

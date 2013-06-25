@@ -155,5 +155,5 @@ def mk_temporary_cert(cacert_file, ca_key_file, cn):
         cert.set_issuer(cert.get_subject())
         cert.sign(pk2, 'sha1')
     
-    return cert
+    return (cert,pk2)
  
