@@ -4,6 +4,7 @@ import sys
 import socket
 import SimpleHTTPServer
 import cgi
+from OpenSSL import crypto,SSL
 from tls_endpoint import *
 
 class TCPRequestClient(asyncore.dispatcher):
@@ -28,6 +29,8 @@ class TCPRequestClient(asyncore.dispatcher):
 
         # setup passthroug
         self.http_type = self.header_dict['CONNECT'].split(' ')[1]
+
+        # for on the fly intercetion comment this
         self.create_socket(socket.AF_INET,socket.SOCK_STREAM)
         self.connect((self.hostname,int(self.port)))
 
@@ -35,15 +38,15 @@ class TCPRequestClient(asyncore.dispatcher):
         # Generate on the fly a certificate for this domein
         (self.pem_file,self.key_file) = generate_cert(self.hostname)
         #print self.pem_file
-        self.local_ssl_broswer_socket = ssl_wrapper(self.local_socket,self.pem_file,
-                                                    self.key_file)
-        
-        # self.wraped_ssl = SSLConnectionWrapper(self.local_ssl_broswer_socket,self.local_socket)
-        # https_server = HTTPServerWrapper(None,None)
-        # https_server.process_request(self.wraped_ssl,addr)
-        
+
         # Implement RFC 2817 section 5.3
-        self.original_handler.push(self.http_type + " 200 OK\r\n\r\n")
+        self.local_socket.send(self.http_type + " 200 OK\r\n\r\n")
+        
+        #for on the fly interception, uncomment this
+        # self.ssl_local_server = SSLLocalServer(self.local_socket,
+        #                                       self.pem_file,
+        #                                       self.key_file)
+
         self.out_buffer = ""
     
     def handle_connect(self):

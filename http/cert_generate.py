@@ -13,7 +13,7 @@ def mk_ca_issuer():
     Our default CA issuer name.
     """
     issuer = X509.X509_Name()
-    issuer.C = "US"
+    issuer.C = "BE"
     issuer.CN = "ca_testing_server"
     issuer.ST = 'BE'
     issuer.L = 'Ghent'
@@ -68,7 +68,7 @@ def mk_cacert():
     req, pk = mk_request(1024)
     pkey = req.get_pubkey()
     cert = X509.X509()
-    cert.set_serial_number(1)
+    cert.set_serial_number(564616435)
     cert.set_version(2)
     mk_cert_valid(cert)
     cert.set_issuer(mk_ca_issuer())

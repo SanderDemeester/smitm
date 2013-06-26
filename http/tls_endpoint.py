@@ -1,8 +1,10 @@
 import socket
 import ssl
 import time
+import select
 import os
 import asynchat
+import asyncore
 import BaseHTTPServer
 from random import randint
 from OpenSSL import crypto,SSL
@@ -49,66 +51,48 @@ def generate_cert(domein):
             os.getcwd()+"/certs/"+domein+"/"+domein.split(".")[1]+".key")
     
 
+class SSLLocalServer(asyncore.dispatcher):
+    def __init__(self,local_socket,pem_file,key_file):
+        asyncore.dispatcher.__init__(self)
+        self.socket = ssl.wrap_socket(local_socket,server_side=True,
+                                      certfile=pem_file,
+                                      keyfile=key_file,
+                                      do_handshake_on_connect=False)
+
+        while True:
+            try:
+                self.socket.do_handshake()
+                break
+            except ssl.SSLError, err:
+                if err.args[0] == ssl.SSL_ERROR_WANT_READ:
+                    select.select([self.socket],[],[])
+                elif err.args[0] == ssl.SSL_ERROR_WANT_WRITE:
+                    select.select([],[self.socket],[])
+                else:
+                    raise
+            
+
+    def handle_read(self):
+        print "read"
+
+    def handle_write(self):
+        print "write"
+        
 def ssl_wrapper(browser_socket,pem_file,key_file):
     # create ssl context
-    ctx = SSL.Context(SSL.SSLv23_METHOD)
-    ctx.use_privatekey_file(key_file)
-    ctx.use_certificate_file(pem_file)
-    ctx.load_verify_locations(pem_file)
+    # ctx = SSL.Context(SSL.SSLv23_METHOD)
+    # ctx.use_privatekey_file(key_file)
+    # ctx.use_certificate_file(pem_file)
+    # ctx.load_verify_locations(pem_file)
 
-    ssl_browser_connection = SSL.Connection(ctx,browser_socket)
-    ssl_browser_connection.set_accept_state()
-
+    # ssl_browser_connection = SSL.Connection(ctx,browser_socket)
+    # ssl_browser_connection.set_accept_state()
+    
+    ssl_browser_connection = ssl.wrap_socket(browser_socket,
+                                             server_side=True,
+                                             certfile=pem_file,
+                                             keyfile=key_file)
+    
     return ssl_browser_connection
             
-class HTTPServerWrapper(BaseHTTPServer.HTTPServer):
-    def __init__(self,handler,chainHandler):
-        self.RequestHandlerClass = handler
-        self.chainedHandler = chainHandler
 
-class SSLConnectionWrapper(object):
-    def __init__(self, conn, socket):
-        self._connection = conn
-        self._socket = socket
-        
-	def __getattr__(self, name):
-            return self._connection.__getattribute__(name)
-        
-	def __str__(self):
-            return object.__str__(self)
-        
-	def __repr__(self):
-            return object.__repr__(self)
-        
-	def recv(self, amount):
-            return self._wrap(self._socket, self._connection.recv, 10, amount)
-        
-	def send(self, data):
-            return self._wrap(self._socket, self._connection.send, 10, data)
-        
-	def makefile(self, perm, buf):
-            return SSLConnectionWrapperFile(self, socket)
-        
-	def _wrap(self, socket, fun, attempts, *params):
-            count = 0
-            
-            while True:
-                try:
-                    result = fun(*params)
-                    
-                    break
-                except OpenSSL.SSL.WantReadError:
-                    count += 1
-                    
-                    if count == attempts:
-                        break
-                    
-                    select.select([socket], [], [], 3)
-                except OpenSSL.SSL.WantWriteError:
-                    count += 1
-                    
-                    if count == attempts:
-                        break                    
-                select.select([], [socket], [], 3)
-
-            return result
