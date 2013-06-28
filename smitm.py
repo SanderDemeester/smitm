@@ -47,7 +47,7 @@ def create_daemon():
     except OSError,e:
         exit(1)
     os.setsid()
-    os.umask(764)
+    os.umask(0)
     try:
         pid = os.fork()
         if pid > 0:
@@ -71,7 +71,7 @@ if __name__ == "__main__":
             sys.args.target_list = fd.read().splitlines()
             
     TCPRequestClient.args = sys.args
-    signal.signal(signal.SIGINT, signal_handler.signal_handler)
+    signal.signal(signal.SIGINT | signal.SIGTERM, signal_handler.signal_handler)
     generate_filestructure()
     setup_ca()
     s = HTTPServer(9999,HTTPhandler)
