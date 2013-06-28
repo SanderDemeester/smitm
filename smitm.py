@@ -71,8 +71,10 @@ if __name__ == "__main__":
             sys.args.target_list = fd.read().splitlines()
             
     TCPRequestClient.args = sys.args
-    signal.signal(signal.SIGINT | signal.SIGTERM, signal_handler.signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler.signal_handler)
+    signal.signal(signal.SIGINT, signal_handler.signal_handler)
     generate_filestructure()
     setup_ca()
-    s = HTTPServer(9999,HTTPhandler)
+    
+    s = HTTPServer(sys.args.port,HTTPhandler)
     asyncore.loop()
