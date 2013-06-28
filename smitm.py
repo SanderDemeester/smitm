@@ -1,7 +1,7 @@
 #!/usr/bin/python2.7
 from handlers import *
 from http import *
-from logging import *
+from filelog import *
 import argparse
 import asyncore
 import asynchat
@@ -54,7 +54,6 @@ def create_daemon():
             exit(0)
     except OSError,e:
         exit(1)
-        
             
 if __name__ == "__main__":
     
@@ -64,13 +63,19 @@ if __name__ == "__main__":
         create_daemon()
 
 
-    if(sys.args.target != None and len(sys.args.target)>1):
-        print "not list"
+    if(sys.args.target != None and len(sys.args.target)>=1):
+        print "hier"
+        sys.args.target_list = sys.args.target
     elif(sys.args.target != None and os.path.isfile(sys.args.target[0])):
         with open(sys.args.target[0]) as fd:
             sys.args.target_list = fd.read().splitlines()
+    else:
+        sys.args.target_list = "all"
+
             
+    print str(sys.args)
     TCPRequestClient.args = sys.args
+    HTTPhandler.args = sys.args
     signal.signal(signal.SIGTERM, signal_handler.signal_handler)
     signal.signal(signal.SIGINT, signal_handler.signal_handler)
     generate_filestructure()

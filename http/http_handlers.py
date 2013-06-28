@@ -29,24 +29,26 @@ class TCPRequestClient(asyncore.dispatcher):
 
         # setup passthroug
         self.http_type = self.header_dict['CONNECT'].split(' ')[1]
+        print self.args.target_list
+        print self.hostname
+        if(len(filter(lambda x: self.hostname in x,self.args.target_list))>=1 or
+           self.args.target_list == "all"):
+            # we have a match, setup certificate
+            (self.pem_file,self.key_file) = generate_cert(self.hostname)
+            # Signal that we are ready for SSL/TLS streaming as told by RFC 2817
+            self.local_socket.send(self.http_type + " 200 OK\r\n\r\n")
+            self.ssl_local_server = SSLLocalServer(self.local_socket,
+                                                   self.pem_file,
+                                                   self.key_file)            
+            print "setup filter for: " + self.hostname
+        else:
+            print "setup passthroug for: " + self.hostname            
+            self.create_socket(socket.AF_INET,socket.SOCK_STREAM)
+            self.connect((self.hostname,int(self.port)))
+            # Signal that we are ready for SSL/TLS streaming as told by RFC 2817
+            self.local_socket.send(self.http_type + " 200 OK\r\n\r\n")
 
-        # for on the fly intercetion comment this
-        self.create_socket(socket.AF_INET,socket.SOCK_STREAM)
-        self.connect((self.hostname,int(self.port)))
-
-        #intercept test code
-        # Generate on the fly a certificate for this domein
-        (self.pem_file,self.key_file) = generate_cert(self.hostname)
-        #print self.pem_file
-
-        # Implement RFC 2817 section 5.3
-        self.local_socket.send(self.http_type + " 200 OK\r\n\r\n")
-        
-        #for on the fly interception, uncomment this
-        # self.ssl_local_server = SSLLocalServer(self.local_socket,
-        #                                       self.pem_file,
-        #                                       self.key_file)
-
+        # clear out our buffer
         self.out_buffer = ""
     
     def handle_connect(self):
@@ -155,10 +157,11 @@ class HTTPhandler(asynchat.async_chat,SimpleHTTPServer.SimpleHTTPRequestHandler)
         for header in header_list:
             if(header[0] == 'Host:'):
                 host = header[1]
-            elif(header[0] == "GET"):
+            elif(header[0] == "GET" and not self.args.q):
                 print "GET: " + header[1]
             elif(header[0] == "CONNECT"):
-                print "TUNNEL-REQU: " + header[1].split(':')[0]
+                if(not self.args.q):
+                    print "TUNNEL-REQU: " + header[1].split(':')[0]
                 self.tcp_streaming_flag = 1
 
         #print "request for: " + host
