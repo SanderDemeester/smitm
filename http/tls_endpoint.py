@@ -9,42 +9,21 @@ import BaseHTTPServer
 from random import randint
 from OpenSSL import crypto,SSL
 from M2Crypto import X509
-from cert_generate import mk_casigned_cert
-from cert_generate import mk_temporary_cert
-
-def setup_ca():
-    if(not os.path.exists(os.getcwd()+"/certs/ca")):
-        os.makedirs(os.getcwd()+"/certs/ca/")
-    
-    cacert,cert,key = mk_casigned_cert()
-    with open(os.getcwd()+"/certs/ca/cacert.crt","w") as f:
-        f.write(cacert.as_pem())
-    with open(os.getcwd()+"/certs/ca/cert.crt","w") as f:
-        f.write(cert.as_pem())
-        f.write(key.as_pem(None))
-
-    # check is valid
-    cac = X509.load_cert(os.getcwd()+"/certs/ca/cacert.crt")
-    cc = X509.load_cert(os.getcwd()+"/certs/ca/cert.crt")
-    if(not cac.verify() and 
-       not cac.check_ca() and
-       not cc.verify(cac.get_pubkey())):
-        raise SSLError()
-
+from cert_generate import create_cert
+from os.path import join
 
 def generate_cert(domein):
     if(not os.path.exists(os.getcwd()+"/certs/"+domein)):
         # if there does not exist a folder in cwd. Make a new
         os.makedirs(os.getcwd()+"/certs/"+domein)
 
-    (cert,key) = mk_temporary_cert(os.getcwd()+"/certs/ca/cacert.crt",
-                                 os.getcwd()+"/certs/ca/cert.crt",domein)
+    (cert,key) = create_cert(domein)
+
+    open(join("%s" % os.getcwd()+"/certs/"+domein+"/", "%s" % domein.split(".")[1]+".pem"), "wt").write(
+        crypto.dump_certificate(crypto.FILETYPE_PEM, cert))
     
-    with open(os.getcwd()+"/certs/"+domein+"/"+domein.split(".")[1]+".pem","w") as f:
-        f.write(cert.as_pem())    
-        
-    with open(os.getcwd()+"/certs/"+domein+"/"+domein.split(".")[1]+".key","w") as f:
-        f.write(key.as_pem(None))
+    open(join(os.getcwd()+"/certs/"+domein+"/", domein.split(".")[1]+".key"), "wt").write(
+        crypto.dump_privatekey(crypto.FILETYPE_PEM, key))
 
     # openssl x509 -in file.pem -text
     return (os.getcwd()+"/certs/"+domein+"/"+domein.split(".")[1]+".pem",
@@ -57,7 +36,7 @@ class SSLLocalServer(asyncore.dispatcher):
         self.socket = ssl.wrap_socket(local_socket,server_side=True,
                                       certfile=pem_file,
                                       keyfile=key_file,
-                                      do_handshake_on_connect=False)
+                                      do_handshake_on_connect=True)
 
         while True:
             try:
