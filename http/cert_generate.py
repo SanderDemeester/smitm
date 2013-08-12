@@ -1,27 +1,31 @@
-from OpenSSL import crypto
 from OpenSSL import SSL
+from OpenSSL import crypto
 from time import gmtime
 from time import mktime
+import M2Crypto
+import ssl
 
-def create_cert(CN):
-    """Create self-signed certificate."""
-    
+def create_cert(hostname):
+    """Create self-signed certificate."""    
+
+    # Fetch the X509 certificate to get all values for our fake certificate
+    target_cert = ssl.get_server_certificate((hostname, 443))
+    target_x509 = M2Crypto.X509.load_cert_string(target_cert)
     # create a key pair                                                                                                                                                       
     k = crypto.PKey()
     k.generate_key(crypto.TYPE_RSA, 1024)
     
     # create a self-signed cert                                                                                                                                               
     cert = crypto.X509()
-    cert.get_subject().C = "US"
-    cert.get_subject().ST = "Minnesota"
-    cert.get_subject().L = "Minnetonka"
-    cert.get_subject().O = "my company"
-    cert.get_subject().OU = "my organization"
-    cert.get_subject().CN = CN
-    cert.set_serial_number(1000)
+    cert.get_subject().C = target_x509.get_subject.C
+    cert.get_subject().ST = target_x509.get_subject.ST
+    cert.get_subject().L = target_x509.get_subject.ST
+    cert.get_subject().O = target_x509.get_subject.O
+    cert.get_subject().CN = target_x509.get_subject.CN
+    cert.set_serial_number(target_x509.get_serial_number())
     cert.gmtime_adj_notBefore(0)
     cert.gmtime_adj_notAfter(10*365*24*60*60)
-    cert.set_issuer(cert.get_subject())
+    cert.set_issuer(target_x509.get_issuer())
     cert.set_pubkey(k)
     cert.sign(k, 'sha1')
 
