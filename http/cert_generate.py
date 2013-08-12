@@ -25,7 +25,7 @@ def create_cert(hostname):
     cert.set_serial_number(target_x509.get_serial_number())
     cert.gmtime_adj_notBefore(0)
     cert.gmtime_adj_notAfter(10*365*24*60*60)
-    cert.set_issuer(target_x509.get_issuer())
+    cert.set_issuer(target_x509.get_subject())
     cert.set_pubkey(k)
     cert.sign(k, 'sha1')
 
