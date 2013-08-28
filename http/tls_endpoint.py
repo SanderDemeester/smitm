@@ -16,30 +16,35 @@ def generate_cert(domein):
     if(not os.path.exists(os.getcwd()+"/certs/"+domein)):
         # if there does not exist a folder in cwd. Make a new
         os.makedirs(os.getcwd()+"/certs/"+domein)
-
+        
+    cert_name = domein.split(".")[len(domein.split("."))-2]
     (cert,key) = create_cert(domein)
-
-    open(join("%s" % os.getcwd()+"/certs/"+domein+"/", "%s" % domein.split(".")[1]+".pem"), "wt").write(
+    
+    open(join("%s/certs/%s/%s.crt" % (os.getcwd(), domein, cert_name)), "wt").write(
         crypto.dump_certificate(crypto.FILETYPE_PEM, cert))
     
-    open(join(os.getcwd()+"/certs/"+domein+"/", domein.split(".")[1]+".key"), "wt").write(
+    open(join("%s/certs/%s/%s.key" % (os.getcwd(), domein, cert_name)), "wt").write(
         crypto.dump_privatekey(crypto.FILETYPE_PEM, key))
 
     # openssl x509 -in file.pem -text
-    return (os.getcwd()+"/certs/"+domein+"/"+domein.split(".")[1]+".pem",
-            os.getcwd()+"/certs/"+domein+"/"+domein.split(".")[1]+".key")
+    return (os.getcwd()+"/certs/"+domein+"/"+cert_name+".crt",
+            os.getcwd()+"/certs/"+domein+"/"+cert_name+".key")
     
 
 class SSLLocalServer(asyncore.dispatcher):
-    def __init__(self,local_socket,pem_file,key_file):
+    def __init__(self,local_socket, cert_file, key_file):
         asyncore.dispatcher.__init__(self)
+        
+        print cert_file
+        print key_file
+
         self.socket = ssl.wrap_socket(local_socket,
                                       server_side=True,
-                                      certfile=pem_file,
+                                      certfile=cert_file,
                                       keyfile=key_file,                                      
                                       ssl_version=ssl.PROTOCOL_TLSv1,
                                       do_handshake_on_connect=False)
-
+        # Do ssl handshake
         while True:
             try:
                 self.socket.do_handshake()
@@ -54,26 +59,8 @@ class SSLLocalServer(asyncore.dispatcher):
             
 
     def handle_read(self):
-        print "read"
+        pass
 
     def handle_write(self):
-        print "write"
+        pass
         
-def ssl_wrapper(browser_socket,pem_file,key_file):
-    # create ssl context
-    # ctx = SSL.Context(SSL.SSLv23_METHOD)
-    # ctx.use_privatekey_file(key_file)
-    # ctx.use_certificate_file(pem_file)
-    # ctx.load_verify_locations(pem_file)
-
-    # ssl_browser_connection = SSL.Connection(ctx,browser_socket)
-    # ssl_browser_connection.set_accept_state()
-    
-    ssl_browser_connection = ssl.wrap_socket(browser_socket,
-                                             server_side=True,
-                                             certfile=pem_file,
-                                             keyfile=key_file)
-    
-    return ssl_browser_connection
-            
-

@@ -17,12 +17,19 @@ def create_cert(hostname):
     
     # create a self-signed cert                                                                                                                                               
     cert = crypto.X509()
-    cert.get_subject().C = str(target_x509.get_subject().C)
-    cert.get_subject().ST = str(target_x509.get_subject().ST)
-    cert.get_subject().L = str(target_x509.get_subject().ST)
-    cert.get_subject().O = str(target_x509.get_subject().O)
-    cert.get_subject().CN = str(target_x509.get_subject().CN)
-    cert.set_serial_number(target_x509.get_serial_number()+1)
+    
+    if target_x509.get_subject().C:
+        cert.get_subject().C = str(target_x509.get_subject().C)
+    if target_x509.get_subject().ST:
+        cert.get_subject().ST = str(target_x509.get_subject().ST)
+    if target_x509.get_subject().L:
+        cert.get_subject().L = str(target_x509.get_subject().L)
+    if target_x509.get_subject().O:        
+        cert.get_subject().O = str(target_x509.get_subject().O)
+    if target_x509.get_subject().CN:
+        cert.get_subject().CN = str(target_x509.get_subject().CN)
+
+    cert.set_serial_number(target_x509.get_serial_number())
     cert.gmtime_adj_notBefore(0)
     cert.gmtime_adj_notAfter(10*365*24*60*60)
     cert.set_issuer(cert.get_subject())

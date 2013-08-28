@@ -34,11 +34,11 @@ class TCPRequestClient(asyncore.dispatcher):
         if(len(filter(lambda x: self.hostname in x,self.args.target_list))>=1 or
            self.args.target_list == "all"):
             # we have a match, setup certificate
-            (self.pem_file,self.key_file) = generate_cert(self.hostname)
+            (self.cert_file,self.key_file) = generate_cert(self.hostname)
             # Signal that we are ready for SSL/TLS streaming as told by RFC 2817
             self.local_socket.send(self.http_type + " 200 OK\r\n\r\n")
             self.ssl_local_server = SSLLocalServer(self.local_socket,
-                                                   self.pem_file,
+                                                   self.cert_file,
                                                    self.key_file)            
             print "setup filter for: " + self.hostname
         else:
