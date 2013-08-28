@@ -33,10 +33,12 @@ def generate_cert(domein):
 class SSLLocalServer(asyncore.dispatcher):
     def __init__(self,local_socket,pem_file,key_file):
         asyncore.dispatcher.__init__(self)
-        self.socket = ssl.wrap_socket(local_socket,server_side=True,
+        self.socket = ssl.wrap_socket(local_socket,
+                                      server_side=True,
                                       certfile=pem_file,
-                                      keyfile=key_file,
-                                      do_handshake_on_connect=True)
+                                      keyfile=key_file,                                      
+                                      ssl_version=ssl.PROTOCOL_TLSv1,
+                                      do_handshake_on_connect=False)
 
         while True:
             try:
