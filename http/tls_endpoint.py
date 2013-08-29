@@ -13,18 +13,18 @@ from cert_generate import create_cert
 from os.path import join
 
 def generate_cert(domein):
+    cert_name = domein.split(".")[len(domein.split("."))-2]
+
     if(not os.path.exists(os.getcwd()+"/certs/"+domein)):
         # if there does not exist a folder in cwd. Make a new
         os.makedirs(os.getcwd()+"/certs/"+domein)
+        (cert,key) = create_cert(domein)
         
-    cert_name = domein.split(".")[len(domein.split("."))-2]
-    (cert,key) = create_cert(domein)
+        open(join("%s/certs/%s/%s.crt" % (os.getcwd(), domein, cert_name)), "wt").write(
+            crypto.dump_certificate(crypto.FILETYPE_PEM, cert))
     
-    open(join("%s/certs/%s/%s.crt" % (os.getcwd(), domein, cert_name)), "wt").write(
-        crypto.dump_certificate(crypto.FILETYPE_PEM, cert))
-    
-    open(join("%s/certs/%s/%s.key" % (os.getcwd(), domein, cert_name)), "wt").write(
-        crypto.dump_privatekey(crypto.FILETYPE_PEM, key))
+        open(join("%s/certs/%s/%s.key" % (os.getcwd(), domein, cert_name)), "wt").write(
+            crypto.dump_privatekey(crypto.FILETYPE_PEM, key))
 
     # openssl x509 -in file.pem -text
     return (os.getcwd()+"/certs/"+domein+"/"+cert_name+".crt",
@@ -59,7 +59,8 @@ class SSLLocalServer(asyncore.dispatcher):
             
 
     def handle_read(self):
-        pass
+        data = self.revc(1000)
+        print data
 
     def handle_write(self):
         pass
